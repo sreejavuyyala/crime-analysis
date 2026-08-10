@@ -499,7 +499,7 @@
         var hi = hist.edges[i + 1].toFixed(2);
         var hit = svgEl("rect", { x: margin.left + i * barSlot, y: margin.top, width: barSlot, height: plotH, class: "hover-hit" });
         hit.addEventListener("pointermove", function (ev) {
-          showTooltip(ev.clientX, ev.clientY, lo + " – " + hi, [{ color: "seq", name: "Communities", value: String(c) }]);
+          showTooltip(ev.clientX, ev.clientY, lo + " – " + hi, [{ color: "accent", name: "Communities", value: String(c) }]);
         });
         hit.addEventListener("pointerleave", hideTooltip);
         svg.appendChild(hit);
@@ -571,7 +571,7 @@
 
       var hit = svgEl("rect", { x: margin.left + i * barSlot, y: margin.top, width: barSlot, height: plotH, class: "hover-hit" });
       hit.addEventListener("pointermove", function (ev) {
-        showTooltip(ev.clientX, ev.clientY, name, [{ color: "seq", name: "Variance explained", value: fmtPct1(v) }]);
+        showTooltip(ev.clientX, ev.clientY, name, [{ color: "accent", name: "Variance explained", value: fmtPct1(v) }]);
       });
       hit.addEventListener("pointerleave", hideTooltip);
       svg.appendChild(hit);
