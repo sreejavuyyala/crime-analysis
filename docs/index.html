@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crime Analysis — Communities &amp; Crime Dashboard</title>
+<meta name="description" content="Interactive exploration of the UCI Communities and Crime dataset: correlations, trends, and PCA on violent crime rates across 1,994 US communities." />
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* blue   */
+    --series-2:       #eb6834; /* orange */
+    --series-3:       #1baf7a; /* aqua   */
+    --series-4:       #eda100; /* yellow */
+    --series-8:       #e34948; /* red    */
+    --seq-100:        #cde2fb;
+    --seq-400:        #3987e5;
+    --seq-450:        #2a78d6;
+    --seq-650:        #104281;
+    --diverge-mid:    #f0efec;
+    --card-shadow:    0 1px 2px rgba(11,11,11,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --series-3:       #199e70;
+      --series-4:       #c98500;
+      --series-8:       #e66767;
+      --seq-100:        #184f95;
+      --seq-400:        #3987e5;
+      --seq-450:        #3987e5;
+      --seq-650:        #cde2fb;
+      --diverge-mid:    #383835;
+      --card-shadow:    0 1px 2px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --series-3:       #199e70;
+    --series-4:       #c98500;
+    --series-8:       #e66767;
+    --seq-100:        #184f95;
+    --seq-400:        #3987e5;
+    --seq-450:        #3987e5;
+    --seq-650:        #cde2fb;
+    --diverge-mid:    #383835;
+    --card-shadow:    0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding-bottom: 64px; }
+
+  a { color: var(--series-1); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  header.top {
+    padding: 40px 0 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  header.top h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  header.top p.lede { color: var(--text-secondary); max-width: 640px; line-height: 1.5; margin: 0 0 16px; }
+  .top-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.9rem; }
+  .top-links a { text-decoration: none; font-weight: 600; }
+  .top-links a:hover { text-decoration: underline; }
+
+  .theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 4px;
+    background: var(--page-plane);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .theme-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .theme-toggle button[aria-pressed="true"] {
+    background: var(--surface-1);
+    color: var(--text-primary);
+    box-shadow: var(--card-shadow);
+  }
+
+  header.top { position: relative; }
+
+  section.section { padding: 36px 0; }
+  section.section h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  section.section p.section-note { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5; max-width: 720px; margin: 0 0 20px; }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .stat-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--card-shadow);
+  }
+  .stat-tile .label { color: var(--text-secondary); font-size: 0.78rem; margin-bottom: 6px; }
+  .stat-tile .value { font-size: 1.6rem; font-weight: 600; }
+  .stat-tile .sub { color: var(--text-muted); font-size: 0.76rem; margin-top: 4px; }
+
+  /* Chart card */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px 16px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+  }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .card-head > div { min-width: 0; flex: 1 1 240px; }
+  .card-head h3 { font-size: 0.98rem; margin: 0; }
+  .card-head p { color: var(--text-secondary); font-size: 0.83rem; margin: 4px 0 0; line-height: 1.45; }
+  .table-toggle {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.76rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .table-toggle:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+  .chart-mount { margin-top: 10px; position: relative; }
+  .chart-mount svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .data-table { display: none; width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.82rem; }
+  .data-table.visible { display: table; }
+  .chart-mount.table-visible svg { display: none; }
+  .data-table th, .data-table td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--gridline);
+    font-variant-numeric: tabular-nums;
+  }
+  .data-table th { color: var(--text-secondary); font-weight: 600; font-size: 0.76rem; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 2px; font-size: 0.8rem; color: var(--text-secondary); }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 14px; height: 2px; border-radius: 2px; display: inline-block; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .rent-toggle { display: flex; gap: 6px; margin-bottom: 4px; }
+  .rent-toggle button {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .rent-toggle button[aria-pressed="true"] { background: var(--series-1); color: white; border-color: var(--series-1); }
+
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    opacity: 0;
+    transition: opacity 0.08s ease;
+    z-index: 50;
+    max-width: 240px;
+  }
+  .tooltip.visible { opacity: 1; }
+  .tooltip .tt-title { color: var(--text-secondary); font-size: 0.72rem; margin-bottom: 4px; }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; gap: 10px; }
+  .tooltip .tt-row + .tt-row { margin-top: 3px; }
+  .tooltip .tt-key { width: 10px; height: 2px; border-radius: 2px; flex-shrink: 0; }
+  .tooltip .tt-name { color: var(--text-secondary); }
+  .tooltip .tt-val { font-weight: 600; color: var(--text-primary); margin-left: auto; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; } }
+
+  .findings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .findings { grid-template-columns: 1fr; } }
+  .findings .col h4 { font-size: 0.85rem; margin: 0 0 8px; color: var(--text-secondary); }
+  .findings ul { margin: 0; padding-left: 18px; font-size: 0.9rem; line-height: 1.6; }
+
+  footer.bottom { padding: 30px 0; color: var(--text-muted); font-size: 0.82rem; }
+  footer.bottom a { color: var(--text-secondary); }
+
+  .loading-note { color: var(--text-muted); font-size: 0.85rem; padding: 40px 0; text-align: center; }
+  .caption { color: var(--text-muted); font-size: 0.76rem; margin-top: 8px; }
+  code { background: var(--gridline); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+
+  /* SVG mark colors — theme-reactive via CSS custom properties */
+  .mark-series-1  { fill: var(--series-1); }
+  .mark-series-2  { fill: var(--series-2); }
+  .mark-series-3  { fill: var(--series-3); }
+  .mark-series-4  { fill: var(--series-4); }
+  .mark-series-8  { fill: var(--series-8); }
+  .mark-seq       { fill: var(--seq-400); }
+  .stroke-series-1 { stroke: var(--series-1); }
+  .stroke-series-2 { stroke: var(--series-2); }
+  .stroke-series-3 { stroke: var(--series-3); }
+  .stroke-series-4 { stroke: var(--series-4); }
+  .stroke-series-8 { stroke: var(--series-8); }
+  .stroke-seq      { stroke: var(--seq-450); }
+  .grid-line   { stroke: var(--gridline); stroke-width: 1; }
+  .base-line   { stroke: var(--baseline); stroke-width: 1; }
+  .axis-text   { fill: var(--text-muted); font-size: 11px; }
+  .value-text  { fill: var(--text-secondary); font-size: 11px; }
+  .end-label   { fill: var(--text-secondary); font-size: 11px; font-weight: 600; }
+  .hover-hit   { fill: transparent; cursor: pointer; }
+  .hover-hit:hover ~ .hover-dot,
+  .hover-dot.active { r: 5; }
+  .crosshair   { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+
+<header class="top">
+  <div class="wrap">
+    <div class="theme-toggle" role="group" aria-label="Theme">
+      <button type="button" data-theme-choice="light">Light</button>
+      <button type="button" data-theme-choice="dark">Dark</button>
+      <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+    </div>
+    <h1>Crime Analysis</h1>
+    <p class="lede">
+      An exploratory analysis of the UCI <strong>Communities and Crime</strong> dataset —
+      1,994 US communities, 128 socio-economic and law-enforcement attributes, one target:
+      violent crimes per population. This page renders the cleaned dataset's key metrics
+      directly from the analysis pipeline in the repository.
+    </p>
+    <div class="top-links">
+      <a href="https://github.com/sreejavuyyala/crime-analysis" target="_blank" rel="noopener">View source on GitHub →</a>
+      <a href="https://archive.ics.uci.edu/ml/machine-learning-databases/communities/communities.data" target="_blank" rel="noopener">Raw dataset (UCI) →</a>
+      <a href="https://github.com/sreejavuyyala/crime-analysis/blob/main/crime_analysis.py" target="_blank" rel="noopener">crime_analysis.py →</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="overview">
+    <h2>Dataset overview</h2>
+    <p class="section-note">
+      Non-predictive identifiers (state, county, community, communityname, fold) are dropped;
+      <code>'?'</code> placeholders are coerced to missing; the one sparse numeric column
+      (<code>OtherPerCap</code>) is mean-imputed; 22 policing columns missing in over 80% of
+      rows are dropped rather than imputed.
+    </p>
+    <div class="kpi-row" id="kpi-row">
+      <div class="loading-note">Loading metrics…</div>
+    </div>
+  </section>
+
+  <section class="section" id="correlations">
+    <h2>What correlates with violent crime</h2>
+    <p class="section-note">
+      Pearson correlation of every feature against <code>ViolentCrimesPerPop</code>, the
+      10 strongest protective (negative) and 10 strongest risk (positive) factors.
+    </p>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Strongest correlates (top 10 each direction)</h3>
+          <p>Blue bars are protective (higher value → lower crime); red bars are risk factors (higher value → higher crime).</p>
+        </div>
+        <button class="table-toggle" data-target="corr-chart">View as table</button>
+      </div>
+      <div class="chart-mount" id="corr-chart"></div>
+    </div>
+  </section>
+
+  <section class="section" id="trends">
+    <h2>Community composition across the crime spectrum</h2>
+    <p class="section-note">
+      Communities are grouped into 10 equal-sized deciles by violent crime rate (D1 = lowest
+      crime, D10 = highest). Each line shows how that decile's average feature value shifts
+      from low- to high-crime communities.
+    </p>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>Age composition</h3>
+            <p>Share of population in each age band, by crime decile.</p>
+          </div>
+          <button class="table-toggle" data-target="age-chart">View as table</button>
+        </div>
+        <div class="chart-mount" id="age-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>Employment</h3>
+            <p>Employment-status rates, by crime decile.</p>
+          </div>
+          <button class="table-toggle" data-target="employ-chart">View as table</button>
+        </div>
+        <div class="chart-mount" id="employ-chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="population">
+    <h2>Community size vs. violent crime</h2>
+    <p class="section-note">
+      Violent-crime-rate distribution by population-size bin (5 equal-width bins over the
+      normalized <code>population</code> feature). Box shows the interquartile range and
+      median; whiskers extend to min/max. Note bins 2–6 have far fewer communities (see
+      counts) — read with that in mind.
+    </p>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Violent crime rate by population-size bin</h3>
+          <p>Bin 1 = smallest communities … bin 6 = largest.</p>
+        </div>
+        <button class="table-toggle" data-target="pop-chart">View as table</button>
+      </div>
+      <div class="chart-mount" id="pop-chart"></div>
+    </div>
+  </section>
+
+  <section class="section" id="rent">
+    <h2>Rent distribution</h2>
+    <p class="section-note">
+      Median rent is right-skewed; a log transform pulls the tail in, which is why the
+      original notebook compares both. Toggle between them below.
+    </p>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>RentMedian</h3>
+          <p>Normalized median rent (0–1), raw vs. log(x+1) transformed.</p>
+        </div>
+        <button class="table-toggle" data-target="rent-chart">View as table</button>
+      </div>
+      <div class="rent-toggle" role="group" aria-label="Transform">
+        <button type="button" data-rent-view="raw" aria-pressed="true">Raw</button>
+        <button type="button" data-rent-view="log" aria-pressed="false">Log-transformed</button>
+      </div>
+      <div class="chart-mount" id="rent-chart"></div>
+    </div>
+  </section>
+
+  <section class="section" id="pca">
+    <h2>Principal component analysis</h2>
+    <p class="section-note">
+      The 100 predictive features are standardized and reduced with PCA (70/30 train/test
+      split, seed 0). The first 14 components capture the majority of total variance.
+    </p>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Variance explained per component</h3>
+          <p id="pca-caption">Cumulative variance across 14 components: —</p>
+        </div>
+        <button class="table-toggle" data-target="pca-chart">View as table</button>
+      </div>
+      <div class="chart-mount" id="pca-chart"></div>
+    </div>
+  </section>
+
+  <section class="section" id="findings">
+    <h2>Key findings</h2>
+    <div class="findings">
+      <div class="col">
+        <h4>Strongest protective factors</h4>
+        <ul>
+          <li><strong>PctKids2Par</strong> — % of families with kids headed by two parents (r = −0.74)</li>
+          <li><strong>PctFam2Par</strong> — % of kids in two-parent family housing (r = −0.71)</li>
+          <li><strong>racePctWhite</strong> — % of population that is Caucasian (r = −0.68)</li>
+          <li><strong>PctYoungKids2Par</strong> / <strong>PctTeen2Par</strong> — two-parent households by child age band (r ≈ −0.66)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>Strongest risk factors</h4>
+        <ul>
+          <li><strong>PctIlleg</strong> — % of illegitimate births (r = 0.74)</li>
+          <li><strong>racepctblack</strong> — % of population that is Black (r = 0.63)</li>
+          <li><strong>pctWPubAsst</strong> — % of households with public assistance income (r = 0.57)</li>
+          <li><strong>FemalePctDiv</strong> / <strong>TotalPctDiv</strong> — divorce rates (r ≈ 0.55)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="caption" style="margin-top:16px; max-width:760px;">
+      Interpret cautiously: many of these variables are proxies for poverty and family
+      structure rather than independent causal factors, and the dataset carries known
+      sampling and reporting biases (see the <a href="https://archive.ics.uci.edu/ml/datasets/communities+and+crime" target="_blank" rel="noopener">UCI dataset documentation</a>).
+    </p>
+  </section>
+
+</main>
+
+<footer class="bottom">
+  <div class="wrap">
+    Data: <a href="https://archive.ics.uci.edu/ml/datasets/communities+and+crime" target="_blank" rel="noopener">UCI Communities and Crime</a> ·
+    Metrics generated by <a href="https://github.com/sreejavuyyala/crime-analysis/blob/main/scripts/generate_dashboard_data.py" target="_blank" rel="noopener">scripts/generate_dashboard_data.py</a> ·
+    Source: <a href="https://github.com/sreejavuyyala/crime-analysis" target="_blank" rel="noopener">sreejavuyyala/crime-analysis</a>
+  </div>
+</footer>
+
+</div>
+
+<div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+<script src="chart.js"></script>
+</body>
+</html>

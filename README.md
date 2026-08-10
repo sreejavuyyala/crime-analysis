@@ -4,6 +4,10 @@ Exploratory data analysis of the UCI **Communities and Crime** dataset — clean
 missing-value handling, feature engineering, visualization, correlation analysis,
 and PCA on violent crime rates (`ViolentCrimesPerPop`) across 1,994 US communities.
 
+**Live dashboard: https://sreejavuyyala.github.io/crime-analysis/** — an interactive
+view of the same metrics (correlations, decile trends, PCA variance, rent
+distribution) that renders directly in the browser, no setup required.
+
 ## Dataset
 
 [UCI Machine Learning Repository — Communities and Crime](https://archive.ics.uci.edu/ml/machine-learning-databases/communities/communities.data)
@@ -59,11 +63,36 @@ Interpretation should be cautious: many of these variables are proxies for
 poverty and family structure rather than independent causal factors, and the
 dataset itself carries known sampling/reporting biases.
 
+## Dashboard
+
+`docs/` is a static, dependency-free site (published via GitHub Pages) that
+renders the pipeline's key metrics as an interactive dashboard — stat tiles,
+a diverging correlation chart, decile trend lines, a population-size box
+plot, a rent histogram with a raw/log toggle, and PCA variance — each with a
+"View as table" fallback and light/dark themes. It reads a precomputed
+`docs/data/dashboard.json`; regenerate it after changing the pipeline with:
+
+```bash
+python scripts/generate_dashboard_data.py
+```
+
+To preview locally:
+
+```bash
+cd docs && python -m http.server 8000   # then open http://localhost:8000
+```
+
 ## Project structure
 
 ```
 crime-analysis/
-├── crime_analysis.py   # full analysis pipeline (load → clean → engineer → visualize → correlate → PCA)
+├── crime_analysis.py               # full analysis pipeline (load → clean → engineer → visualize → correlate → PCA)
+├── scripts/
+│   └── generate_dashboard_data.py  # runs the pipeline, exports docs/data/dashboard.json
+├── docs/                           # static dashboard (published via GitHub Pages)
+│   ├── index.html
+│   ├── chart.js
+│   └── data/dashboard.json
 ├── requirements.txt
 ├── .gitignore
 └── README.md
